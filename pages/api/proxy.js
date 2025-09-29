@@ -1,9 +1,6 @@
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const targetUrl = searchParams.get("url");
-  if (!targetUrl) {
-    return new Response("Missing ?url=", { status: 400 });
-  }
+export default async function handler(req, res) {
+  const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).send("Missing ?url=");
 
   try {
     const upstream = await fetch(targetUrl, {
@@ -14,14 +11,14 @@ export async function GET(req) {
     });
 
     if (!upstream.ok) {
-      return new Response("Upstream error", { status: upstream.status });
+      res.status(upstream.status).send("Upstream error");
+      return;
     }
 
-    const body = await upstream.arrayBuffer();
-    return new Response(body, {
-      headers: { "Content-Type": upstream.headers.get("content-type") || "image/jpeg" }
-    });
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "image/jpeg");
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.send(buf);
   } catch (err) {
-    return new Response("Proxy error: " + err.message, { status: 500 });
+    res.status(500).send("Proxy error: " + err.message);
   }
 }
